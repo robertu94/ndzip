@@ -82,7 +82,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 17)
 
 set(NDZIP_COMPILE_FLAGS -Wall -Wextra -Wno-attributes -Wimplicit-fallthrough)
-set(NDZIP_CXX_FLAGS ${NDZIP_COMPILE_FLAGS} -Werror=return-type -Werror=init-self -Werror=undef)
+option(NDZIP_USE_WERROR "add -Werror to build flags" ON)
+if(NDZIP_USE_WERROR)
+  set(NDZIP_CXX_FLAGS ${NDZIP_COMPILE_FLAGS} -Werror=return-type -Werror=init-self -Werror=undef)
+endif()
 
 if (NDZIP_USE_HIPSYCL)
     # Aggressive inlining avoids GPU call stack allocation == global memory access bottleneck
