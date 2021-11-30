@@ -625,7 +625,7 @@ size_t ndzip::cpu_encoder<T, Dims>::compress(const slice<const data_type, dimens
 
 template<typename T, unsigned Dims>
 size_t ndzip::cpu_encoder<T, Dims>::decompress(
-        const void *raw_stream, size_t bytes, const slice<data_type, dimensions> &data) const {
+        const void *raw_stream, size_t , const slice<data_type, dimensions> &data) const {
     using profile = detail::profile<T, Dims>;
     using bits_type = typename profile::bits_type;
 
@@ -848,7 +848,7 @@ ndzip::mt_cpu_encoder<T, Dims>::compress(const slice<const data_type, dimensions
 
 template<typename T, unsigned Dims>
 size_t ndzip::mt_cpu_encoder<T, Dims>::decompress(
-        const void *raw_stream, size_t bytes, const slice<data_type, dimensions> &data) const {
+        const void *raw_stream, size_t , const slice<data_type, dimensions> &data) const {
     using profile = detail::profile<T, Dims>;
     using bits_type = typename profile::bits_type;
 

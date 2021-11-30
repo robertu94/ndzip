@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
-project(ndzip)
+project(ndzip VERSION 0.0.3)
 
 option(NDZIP_BUILD_TEST "Build unit tests" OFF)
 option(NDZIP_BUILD_BENCHMARK "Build benchmarks against other algorithms" OFF)
@@ -9,8 +9,10 @@ option(NDZIP_WITH_HIPSYCL "Enable GPU implementation through hipSYCL if availabl
 option(NDZIP_WITH_CUDA "Enable GPU implementation through CUDA if available" ON)
 option(NDZIP_WITH_3RDPARTY_BENCHMARKS "Build third-party libraries for benchmarking" ON)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(SplitConfiguration)
+include(GNUInstallDirs)
 
 find_package(Boost REQUIRED COMPONENTS thread program_options)
 
@@ -123,7 +125,10 @@ target_split_configured_sources(ndzip PRIVATE
     ${NDZIP_PROFILE_CONFIGURATIONS}
 )
 
-target_include_directories(ndzip PUBLIC include)
+target_include_directories(ndzip PUBLIC 
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+  )
 target_compile_definitions(ndzip PUBLIC
     -DNDZIP_HIPSYCL_SUPPORT=$<BOOL:${NDZIP_USE_HIPSYCL}>
     -DNDZIP_CUDA_SUPPORT=$<BOOL:${NDZIP_USE_CUDA}>
@@ -134,6 +139,14 @@ target_compile_options(ndzip PRIVATE ${NDZIP_CXX_FLAGS})
 if (NDZIP_USE_OPENMP)
     target_link_libraries(ndzip PRIVATE OpenMP::OpenMP_CXX Boost::thread)
 endif ()
+install(TARGETS ndzip 
+  EXPORT NDZipTargets
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  )
+install(DIRECTORY include/ndzip DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 if (NDZIP_USE_HIPSYCL)
     add_library(ndzip-sycl SHARED
@@ -144,10 +157,20 @@ if (NDZIP_USE_HIPSYCL)
         GENERATE sycl_encoder.cc FROM src/ndzip/sycl_encoder.inl
         ${NDZIP_PROFILE_CONFIGURATIONS}
     )
-    target_include_directories(ndzip-sycl PUBLIC include)
+    target_include_directories(ndzip-sycl PUBLIC 
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}include>
+      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+      )
     target_compile_options(ndzip-sycl PRIVATE ${NDZIP_HIPSYCL_FLAGS})
     add_sycl_to_target(TARGET ndzip-sycl)
     target_link_libraries(ndzip-sycl PUBLIC ndzip)
+    install(TARGETS ndzip-sycl 
+      EXPORT NDZipTargets
+      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+      INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+      )
 endif ()
 
 if (NDZIP_USE_CUDA)
@@ -159,12 +182,22 @@ if (NDZIP_USE_CUDA)
         GENERATE cuda_encoder.cu FROM src/ndzip/cuda_encoder.inl
         ${NDZIP_PROFILE_CONFIGURATIONS}
     )
-    target_include_directories(ndzip-cuda PUBLIC include)
+    target_include_directories(ndzip-cuda PUBLIC 
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}include>
+      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+      )
     # target_compile_options and the COMPILE_OPTIONS property will de-duplicate flags which breaks
     # -Xcudafe <arg>. Use (deprecated) COMPILE_FLAGS instead.
     list(JOIN NDZIP_CUDA_FLAGS " " NDZIP_CUDA_FLAGS_STRING)
     set_target_properties(ndzip-cuda PROPERTIES COMPILE_FLAGS "${NDZIP_CUDA_FLAGS_STRING}")
     target_link_libraries(ndzip-cuda PUBLIC ndzip)
+    install(TARGETS ndzip-cuda 
+      EXPORT NDZipTargets
+      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+      INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+      )
 endif ()
 
 add_library(io STATIC
@@ -361,3 +394,20 @@ if (NDZIP_BUILD_BENCHMARK AND NDZIP_WITH_3RDPARTY_BENCHMARKS)
         target_link_libraries(benchmark PRIVATE zfp)
     endif ()
 endif ()
+
+install(EXPORT NDZipTargets NAMESPACE NDZip:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/NDZip/)
+include(CMakePackageConfigHelpers)
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/NDZipConfig.cmake.in
+  "${CMAKE_CURRENT_BINARY_DIR}/NDZipConfig.cmake"
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/NDZip
+)
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/NDZipConfigVersion.cmake"
+  VERSION "${PROJECT_VERSION}"
+  COMPATIBILITY AnyNewerVersion
+)
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/NDZipConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/NDZipConfigVersion.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/NDZip
+)
